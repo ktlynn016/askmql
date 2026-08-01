@@ -1,0 +1,12 @@
+{
+  "_comment": "Query -> expected top book id(s), used by eval/run_eval.py to score the retrieval pipeline (services/retrieval). Extend this over time with real logged queries that got the wrong answer.",
+  "cases": [
+    {"query": "Is Clean Code available?", "expected_book_ids": [3]},
+    {"query": "Recommend programming books", "expected_book_ids": [3, 4, 5]},
+    {"query": "Find books about Artificial Intelligence", "expected_book_ids": [1, 2, 6]},
+    {"query": "Suggest books about databases", "expected_book_ids": [7, 8]},
+    {"query": "Where can I find networking books?", "expected_book_ids": [9, 10]},
+    {"query": "Deep Learning", "expected_book_ids": [2]},
+    {"query": "CCNA cert guide", "expected_book_ids": [10]}
+  ]
+}

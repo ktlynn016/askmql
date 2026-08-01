@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASKMQL — Book Details</title>
+<link rel="stylesheet" href="css/tokens/colors.css">
+<link rel="stylesheet" href="css/tokens/typography.css">
+<link rel="stylesheet" href="css/tokens/spacing.css">
+<link rel="stylesheet" href="css/base/reset.css">
+<link rel="stylesheet" href="css/base/base.css">
+<link rel="stylesheet" href="css/layouts/page.css">
+<link rel="stylesheet" href="css/components/buttons.css">
+<link rel="stylesheet" href="css/components/cards.css">
+<link rel="stylesheet" href="css/components/modals.css">
+<link rel="stylesheet" href="css/themes/light.css">
+<link rel="stylesheet" href="css/themes/dark.css">
+</head>
+<body>
+
+<div class="page">
+  <header class="page-header">
+    <a class="page-back" href="chat.html"><span data-icon="arrow-left"></span></a>
+    <h1>Book Details</h1>
+  </header>
+  <main class="page-body" id="bookBody">
+    <p style="color:var(--muted);">Loading…</p>
+  </main>
+</div>
+
+<script src="js/core/constants.js"></script>
+<script src="js/core/dom.js"></script>
+<script src="js/core/icons.js"></script>
+<script src="js/state/catalog-data.js"></script>
+<script src="js/state/store.js"></script>
+<script src="js/api/client.js"></script>
+<script src="js/api/books.js"></script>
+<script src="js/components/book-card.js"></script>
+<script>
+(function () {
+  var icons = ASKMQL.core.icons;
+  icons.injectIconSprite();
+  document.querySelectorAll("[data-icon]").forEach(function (el) {
+    el.innerHTML = icons.icon(el.getAttribute("data-icon"));
+  });
+
+  var id = new URLSearchParams(window.location.search).get("id");
+  var body = document.getElementById("bookBody");
+  var icon = icons.icon;
+  var esc = ASKMQL.core.dom.escapeHtml;
+
+  if (!id) {
+    body.innerHTML = "<p>No book selected. <a href='chat.html'>Back to chat</a>.</p>";
+    return;
+  }
+
+  ASKMQL.api.books.getBook(id).then(function (book) {
+    if (!book) {
+      body.innerHTML = "<p>Book not found. <a href='chat.html'>Back to chat</a>.</p>";
+      return;
+    }
+    var related = (book.related || []).map(function (rid) {
+      return ASKMQL.state.catalogData.getBook(rid);
+    }).filter(Boolean);
+
+    body.innerHTML = ''
+      + '<div class="details-top" style="border:1px solid var(--line); border-radius:20px; background:var(--surface);">'
+      + '  <div class="details-cover" style="background:' + book.color + '">' + icon(book.icon, 'style="width:44px;height:44px;"') + '</div>'
+      + '  <div class="details-headings">'
+      + '    <h2>' + esc(book.title) + '</h2>'
+      + '    <p class="auth">' + esc(book.author) + '</p>'
+      + '    <span class="badge ' + (book.available ? "available" : "unavailable") + '">' + (book.available ? "Available" : "Checked out") + '</span>'
+      + '  </div>'
+      + '</div>'
+      + '<div class="details-body" style="border:1px solid var(--line); border-top:none; border-radius:0 0 20px 20px; background:var(--surface); margin-top:-1px;">'
+      + '  <div class="detail-grid">'
+      + '    <div class="detail-field"><div class="label">Genre</div><div class="val">' + esc(book.category) + '</div></div>'
+      + '    <div class="detail-field"><div class="label">Publication Year</div><div class="val">' + esc(book.year) + '</div></div>'
+      + '    <div class="detail-field"><div class="label">ISBN</div><div class="val">' + esc(book.isbn) + '</div></div>'
+      + '    <div class="detail-field"><div class="label">Shelf Location</div><div class="val">' + esc(book.location) + '</div></div>'
+      + '  </div>'
+      + '  <div><div class="detail-field"><div class="label">Description</div></div><p class="detail-desc">' + esc(book.desc || book.description) + '</p></div>'
+      + '  <div><div class="detail-field"><div class="label">Related Books</div></div><div class="related-row">' + related.map(ASKMQL.components.bookCard.relatedChip).join("") + '</div></div>'
+      + '</div>'
+      + '<div class="details-actions" style="padding-top:16px;">'
+      + '  <a class="btn-outline" href="chat.html">' + icon("arrow-left") + ' Back to Chat</a>'
+      + '  <a class="btn-outline solid" href="chat.html?ask=' + encodeURIComponent(book.title) + '">' + icon("comments") + ' Ask AI About This Book</a>'
+      + '</div>';
+  });
+})();
+</script>
+</body>
+</html>

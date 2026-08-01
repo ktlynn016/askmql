@@ -1,0 +1,7 @@
+:root{
+  /* System font stack only -- no font CDN needed. Picks up
+     Poppins/Inter automatically if the device happens to have them
+     installed, otherwise falls back cleanly. */
+  --font-display:'Poppins', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --font-body:'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+}

@@ -1,0 +1,14 @@
+:root{
+  --primary:#2563EB;
+  --secondary:#3B82F6;
+  --bg:#F8FAFC;
+  --surface:#FFFFFF;
+  --accent:#E0F2FE;
+  --ink:#0F172A;
+  --muted:#64748B;
+  --line:#E2E8F0;
+  --available:#15803D;
+  --available-bg:#DCFCE7;
+  --unavailable:#B91C1C;
+  --unavailable-bg:#FEE2E2;
+}

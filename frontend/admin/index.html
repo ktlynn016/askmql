@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASKMQL — Admin</title>
+<link rel="stylesheet" href="../css/tokens/colors.css">
+<link rel="stylesheet" href="../css/tokens/typography.css">
+<link rel="stylesheet" href="../css/tokens/spacing.css">
+<link rel="stylesheet" href="../css/base/reset.css">
+<link rel="stylesheet" href="../css/base/base.css">
+<link rel="stylesheet" href="../css/layouts/page.css">
+<link rel="stylesheet" href="../css/components/buttons.css">
+<link rel="stylesheet" href="../css/components/forms.css">
+<link rel="stylesheet" href="../css/themes/light.css">
+<style>
+  .metric-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:20px 0;}
+  .metric-card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px;}
+  .metric-card .n{font-family:var(--font-display); font-size:24px; font-weight:800; color:var(--primary);}
+  .metric-card .l{font-size:12px; color:var(--muted); margin-top:4px;}
+  .admin-form{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
+  .admin-form input{flex:1; min-width:200px; padding:10px 12px; border-radius:10px; border:1px solid var(--line);}
+  .admin-note{font-size:12.5px; color:var(--muted); margin-top:12px;}
+  .admin-gate{max-width:360px; margin:40px auto; text-align:center;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px;}
+  .field input{width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--line); font-size:14px; background:var(--bg); color:var(--ink);}
+  .field input:focus{outline:none; border-color:var(--secondary); box-shadow:0 0 0 3px var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="page-header">
+    <a class="page-back" href="../chat.html"><span data-icon="arrow-left"></span></a>
+    <h1>Admin Dashboard</h1>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <span id="whoami" style="font-size:12px; color:var(--muted);"></span>
+      <button class="icon-btn" id="signOutBtn" title="Sign out" style="display:none;"><span data-icon="logout"></span></button>
+    </div>
+  </header>
+  <main class="page-body">
+
+    <!-- Shown until a librarian is signed in -->
+    <div class="admin-gate" id="gate">
+      <p style="color:var(--muted); margin-bottom:20px;">Sign in with a librarian account to view metrics and trigger a catalog sync.</p>
+      <div class="field" style="text-align:left;"><label>Email</label><input type="email" id="emailInput" placeholder="librarian@gsu-mosqueda.edu.ph"></div>
+      <div class="field" style="text-align:left;"><label>Password</label><input type="password" id="passwordInput"></div>
+      <button class="btn-primary" id="loginBtn" style="width:100%; justify-content:center;">Sign In</button>
+      <div class="admin-note" id="gateError" style="color:var(--unavailable);"></div>
+    </div>
+
+    <!-- Shown once signed in as a librarian -->
+    <div id="dashboard" style="display:none;">
+      <p style="color:var(--muted);">
+        Aggregate query metrics from <code>services/analytics/metrics.py</code>,
+        via <code>GET /api/v1/admin/metrics</code>. This always calls the real
+        backend directly (there's no offline/dummy mode for admin data) —
+        start it per <code>backend/README.md</code> first.
+      </p>
+
+      <div class="admin-form">
+        <input type="text" id="apiBase" placeholder="API base URL" value="http://localhost:5000/api/v1">
+        <button class="btn-primary" id="loadBtn" style="padding:10px 20px;">Load metrics</button>
+      </div>
+
+      <div class="metric-grid" id="metricGrid" style="display:none;">
+        <div class="metric-card"><div class="n" id="mCount">–</div><div class="l">Logged queries</div></div>
+        <div class="metric-card"><div class="n" id="mLatency">–</div><div class="l">Avg latency (ms)</div></div>
+        <div class="metric-card"><div class="n" id="mZero">–</div><div class="l">Zero-result rate</div></div>
+      </div>
+      <div id="topIntents"></div>
+      <div id="errorMsg" style="color:var(--unavailable); margin-top:12px;"></div>
+
+      <div class="admin-form" style="margin-top:32px;">
+        <button class="btn-outline" id="syncBtn" style="max-width:220px;"><span data-icon="database"></span> Trigger catalog sync</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/core/constants.js"></script>
+<script src="../js/core/dom.js"></script>
+<script src="../js/core/icons.js"></script>
+<script src="../js/state/catalog-data.js"></script>
+<script src="../js/state/demo-users.js"></script>
+<script src="../js/state/store.js"></script>
+<script src="../js/api/client.js"></script>
+<script src="../js/api/auth.js"></script>
+<script>
+(function () {
+  var icons = ASKMQL.core.icons;
+  icons.injectIconSprite();
+  document.querySelectorAll("[data-icon]").forEach(function (el) {
+    el.innerHTML = icons.icon(el.getAttribute("data-icon"));
+  });
+
+  var gate = document.getElementById("gate");
+  var dashboard = document.getElementById("dashboard");
+  var signOutBtn = document.getElementById("signOutBtn");
+
+  function showSignedIn(user) {
+    gate.style.display = "none";
+    dashboard.style.display = "block";
+    signOutBtn.style.display = "flex";
+    document.getElementById("whoami").textContent = "Signed in as " + user.name;
+  }
+  function showGate() {
+    gate.style.display = "block";
+    dashboard.style.display = "none";
+    signOutBtn.style.display = "none";
+    document.getElementById("whoami").textContent = "";
+  }
+
+  // Reflects this page load's session -- see js/state/store.js on why
+  // that's the whole story in offline mode, and a real persistent
+  // cookie once ASKMQL.core.constants.USE_API is true.
+  var existing = ASKMQL.state.store.getSession();
+  if (existing && existing.role === "librarian") showSignedIn(existing);
+  else showGate();
+
+  document.getElementById("loginBtn").addEventListener("click", function () {
+    var errEl = document.getElementById("gateError");
+    errEl.textContent = "";
+    ASKMQL.api.auth.login(
+      document.getElementById("emailInput").value.trim(),
+      document.getElementById("passwordInput").value,
+      "librarian"
+    ).then(showSignedIn).catch(function (err) { errEl.textContent = err.message; });
+  });
+
+  signOutBtn.addEventListener("click", function () {
+    ASKMQL.api.auth.logout().then(showGate);
+  });
+
+  function headers() {
+    // The session cookie (see js/api/client.js) is what actually
+    // authorizes admin calls now -- credentials:"include" carries it
+    // automatically, no header needed here.
+    return {};
+  }
+  function base() { return document.getElementById("apiBase").value.replace(/\/$/, ""); }
+  function showError(msg) { document.getElementById("errorMsg").textContent = msg; }
+
+  document.getElementById("loadBtn").addEventListener("click", function () {
+    showError("");
+    fetch(base() + "/admin/metrics", { headers: headers(), credentials: "include" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Request failed (" + res.status + "). Make sure you're signed in as a librarian and the API base URL is correct.");
+        return res.json();
+      })
+      .then(function (data) {
+        document.getElementById("metricGrid").style.display = "grid";
+        document.getElementById("mCount").textContent = data.count;
+        document.getElementById("mLatency").textContent = data.avg_latency_ms;
+        document.getElementById("mZero").textContent = (data.zero_result_rate * 100).toFixed(1) + "%";
+        document.getElementById("topIntents").innerHTML = (data.top_intents || [])
+          .map(function (i) { return "<div>" + i.intent + ": " + i.count + "</div>"; }).join("");
+      })
+      .catch(function (err) { showError(err.message); });
+  });
+
+  document.getElementById("syncBtn").addEventListener("click", function () {
+    showError("");
+    fetch(base() + "/admin/sync-catalog", { method: "POST", headers: headers(), credentials: "include" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Request failed (" + res.status + "). Make sure you're signed in as a librarian.");
+        return res.json();
+      })
+      .then(function (data) { alert("Synced " + data.synced + " records."); })
+      .catch(function (err) { showError(err.message); });
+  });
+})();
+</script>
+</body>
+</html>

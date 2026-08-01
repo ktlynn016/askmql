@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASKMQL — Ask Mosqueda Library</title>
+<!-- No external fonts or icon CDN: everything runs fully offline. -->
+<link rel="stylesheet" href="css/tokens/colors.css">
+<link rel="stylesheet" href="css/tokens/typography.css">
+<link rel="stylesheet" href="css/tokens/spacing.css">
+<link rel="stylesheet" href="css/base/reset.css">
+<link rel="stylesheet" href="css/base/base.css">
+<link rel="stylesheet" href="css/layouts/page.css">
+<link rel="stylesheet" href="css/components/buttons.css">
+<link rel="stylesheet" href="css/themes/light.css">
+<link rel="stylesheet" href="css/themes/dark.css">
+</head>
+<body>
+
+<section id="splash" class="splash-screen">
+  <div class="splash-mark" data-icon="book-bookmark"></div>
+  <div class="splash-title">ASKMQL</div>
+  <div class="splash-sub">Ask Mosqueda Library</div>
+  <div class="splash-tag">Your AI Library Assistant</div>
+  <div class="splash-lib">Guimaras State University · Mosqueda Campus</div>
+</section>
+
+<section id="welcome" class="welcome-screen" style="display:none;">
+  <div class="welcome-illo" data-icon="comments"></div>
+  <h1>Meet ASKMQL, your campus library companion</h1>
+  <p>Search the catalog, check what's on the shelf, and get book recommendations — just by asking, in plain language, anytime.</p>
+  <div class="welcome-chips">
+    <span class="welcome-chip">📚 Catalog search</span>
+    <span class="welcome-chip">📍 Shelf locations</span>
+    <span class="welcome-chip">✨ Recommendations</span>
+  </div>
+  <a class="btn-primary" href="login.html">Start Chatting <span data-icon="arrow-right"></span></a>
+</section>
+
+<script src="js/core/constants.js"></script>
+<script src="js/core/dom.js"></script>
+<script src="js/core/icons.js"></script>
+<script>
+  ASKMQL.core.icons.injectIconSprite();
+  document.querySelectorAll("[data-icon]").forEach(function (el) {
+    el.innerHTML = ASKMQL.core.icons.icon(el.getAttribute("data-icon"));
+  });
+  setTimeout(function () {
+    document.getElementById("splash").style.display = "none";
+    document.getElementById("welcome").style.display = "flex";
+  }, 2600);
+</script>
+</body>
+</html>

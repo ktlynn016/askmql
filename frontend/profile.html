@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASKMQL — Profile</title>
+<link rel="stylesheet" href="css/tokens/colors.css">
+<link rel="stylesheet" href="css/tokens/typography.css">
+<link rel="stylesheet" href="css/tokens/spacing.css">
+<link rel="stylesheet" href="css/base/reset.css">
+<link rel="stylesheet" href="css/base/base.css">
+<link rel="stylesheet" href="css/layouts/page.css">
+<link rel="stylesheet" href="css/components/buttons.css">
+<link rel="stylesheet" href="css/components/modals.css">
+<link rel="stylesheet" href="css/components/forms.css">
+<link rel="stylesheet" href="css/themes/light.css">
+<link rel="stylesheet" href="css/themes/dark.css">
+</head>
+<body>
+
+<div class="page">
+  <header class="page-header">
+    <a class="page-back" href="chat.html"><span data-icon="arrow-left"></span></a>
+    <h1>Profile</h1>
+  </header>
+  <main class="page-body">
+    <div class="profile-header" style="margin-bottom:24px;">
+      <div class="avatar" id="avatar" style="width:48px;height:48px;font-size:17px;"></div>
+      <div>
+        <div class="pname" id="pname"></div>
+        <div class="pmeta" id="pmeta"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">Preferences</div>
+      <div class="settings-row">
+        <span class="left"><span data-icon="moon"></span>Dark mode</span>
+        <div class="toggle" id="darkToggle"><div class="knob"></div></div>
+      </div>
+      <div class="settings-row">
+        <span class="left"><span data-icon="bell"></span>Notifications</span>
+        <div class="toggle on" id="notifToggle"><div class="knob"></div></div>
+      </div>
+      <div class="settings-row link">
+        <span class="left"><span data-icon="language"></span>Language</span>
+        <span style="color:var(--muted);font-size:12px;">English <span data-icon="chevron-right" style="width:.7em;height:.7em;"></span></span>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">About</div>
+      <div class="settings-row link"><span class="left"><span data-icon="info"></span>About ASKMQL</span></div>
+      <div class="settings-row link"><span class="left"><span data-icon="shield"></span>Privacy Policy</span></div>
+    </div>
+
+    <button class="logout-btn" id="logoutBtn"><span data-icon="logout"></span> Log out</button>
+  </main>
+</div>
+
+<script src="js/core/constants.js"></script>
+<script src="js/core/dom.js"></script>
+<script src="js/core/icons.js"></script>
+<script src="js/state/catalog-data.js"></script>
+<script src="js/state/demo-users.js"></script>
+<script src="js/state/store.js"></script>
+<script src="js/api/client.js"></script>
+<script src="js/api/auth.js"></script>
+<script src="js/ui/theme.js"></script>
+<script src="js/ui/auth-guard.js"></script>
+<script>
+(function () {
+  var icons = ASKMQL.core.icons;
+  icons.injectIconSprite();
+  document.querySelectorAll("[data-icon]").forEach(function (el) {
+    el.innerHTML = icons.icon(el.getAttribute("data-icon"));
+  });
+
+  function renderProfile(user) {
+    if (!user) {
+      document.getElementById("avatar").textContent = "?";
+      document.getElementById("pname").textContent = "Not signed in";
+      document.getElementById("pmeta").innerHTML = 'Guest browsing — <a href="login.html">sign in</a> to see your profile.';
+      return;
+    }
+    document.getElementById("avatar").textContent = user.avatar_initials;
+    document.getElementById("pname").textContent = user.name;
+    document.getElementById("pmeta").textContent = user.role === "librarian"
+      ? (user.email + " · " + (user.department || "Library Staff"))
+      : ("Student ID: " + user.student_id + " · " + (user.department || ""));
+  }
+  renderProfile(ASKMQL.state.store.getSession());
+  ASKMQL.ui.authGuard.requireSession().then(renderProfile);
+
+  document.getElementById("logoutBtn").addEventListener("click", function () {
+    ASKMQL.api.auth.logout().then(function () { window.location.href = "login.html"; });
+  });
+
+  var darkToggle = document.getElementById("darkToggle");
+  darkToggle.classList.toggle("on", ASKMQL.ui.theme.isDark());
+  darkToggle.addEventListener("click", function () {
+    var on = ASKMQL.ui.theme.toggle();
+    darkToggle.classList.toggle("on", on);
+  });
+
+  document.getElementById("notifToggle").addEventListener("click", function (e) {
+    e.currentTarget.classList.toggle("on");
+  });
+})();
+</script>
+</body>
+</html>

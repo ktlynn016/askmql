@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASKMQL — Chat</title>
+<link rel="stylesheet" href="css/tokens/colors.css">
+<link rel="stylesheet" href="css/tokens/typography.css">
+<link rel="stylesheet" href="css/tokens/spacing.css">
+<link rel="stylesheet" href="css/base/reset.css">
+<link rel="stylesheet" href="css/base/base.css">
+<link rel="stylesheet" href="css/layouts/app-shell.css">
+<link rel="stylesheet" href="css/components/buttons.css">
+<link rel="stylesheet" href="css/components/cards.css">
+<link rel="stylesheet" href="css/components/chat.css">
+<link rel="stylesheet" href="css/components/sidebar.css">
+<link rel="stylesheet" href="css/components/composer.css">
+<link rel="stylesheet" href="css/components/modals.css">
+<link rel="stylesheet" href="css/themes/light.css">
+<link rel="stylesheet" href="css/themes/dark.css">
+</head>
+<body>
+
+<div id="app">
+  <div class="app-shell">
+    <div class="sidebar-backdrop" id="backdrop"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark" data-icon="book-bookmark"></div>
+        <div class="brand-text">ASKMQL<span>Mosqueda Campus Library</span></div>
+      </div>
+      <button class="new-chat-btn" id="newChatBtn"><span data-icon="plus"></span> New chat</button>
+      <div class="sidebar-search">
+        <span data-icon="search"></span>
+        <input type="text" placeholder="Search conversations" id="convSearch">
+      </div>
+      <div class="history-label">Recent conversations</div>
+      <div class="history-list" id="historyList"></div>
+      <a class="sidebar-profile" href="profile.html">
+        <div class="avatar" id="sidebarAvatar"></div>
+        <div>
+          <div class="who" id="sidebarName"></div>
+          <div class="role" id="sidebarRole"></div>
+        </div>
+      </a>
+    </aside>
+
+    <div class="chat-col">
+      <header class="chat-header">
+        <button class="menu-toggle" id="menuToggle"><span data-icon="bars"></span></button>
+        <div>
+          <h2>ASKMQL Assistant</h2>
+          <div class="sub"><span class="status-dot"></span> Online · GSU Mosqueda Library</div>
+        </div>
+        <div class="header-actions">
+          <a class="icon-btn" href="history.html" title="Conversation history"><span data-icon="arrow-left"></span></a>
+          <button class="icon-btn" id="clearBtn" title="Clear conversation"><span data-icon="trash"></span></button>
+          <button class="icon-btn" id="newChatIconBtn" title="New chat"><span data-icon="plus"></span></button>
+          <button class="icon-btn" id="signOutBtn" title="Sign out"><span data-icon="logout"></span></button>
+        </div>
+      </header>
+
+      <div class="messages" id="messages">
+        <div class="empty-state" id="emptyState">
+          <div class="emoji" data-icon="graduation-cap"></div>
+          <h3>How can I help you today?</h3>
+          <p>Ask me to find a book, check availability, or recommend something to read.</p>
+          <div class="prompt-grid">
+            <button class="prompt-card" data-prompt="Find books about Artificial Intelligence"><span data-icon="robot"></span> Find books about Artificial Intelligence</button>
+            <button class="prompt-card" data-prompt="Recommend programming books"><span data-icon="code"></span> Recommend programming books</button>
+            <button class="prompt-card" data-prompt="Is Clean Code available?"><span data-icon="book"></span> Is Clean Code available?</button>
+            <button class="prompt-card" data-prompt="Suggest books about databases"><span data-icon="database"></span> Suggest books about databases</button>
+            <button class="prompt-card" data-prompt="Where can I find networking books?"><span data-icon="network-wired"></span> Where can I find networking books?</button>
+            <button class="prompt-card" data-prompt="Tell me today's library announcements"><span data-icon="bullhorn"></span> Tell me today's library announcements</button>
+          </div>
+        </div>
+        <div class="messages-inner" id="messagesInner"></div>
+      </div>
+
+      <div class="composer-wrap">
+        <div class="composer">
+          <textarea id="composerInput" rows="1" placeholder="Message ASKMQL..."></textarea>
+          <button class="round-btn voice" title="Voice input (coming soon)"><span data-icon="microphone"></span></button>
+          <button class="round-btn send" id="sendBtn" title="Send"><span data-icon="send"></span></button>
+        </div>
+        <div class="composer-hint">
+          <span id="modeHint">ASKMQL uses sample catalog data in this preview and may not reflect real shelf status.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Book details overlay -->
+<div class="details-overlay" id="detailsOverlay">
+  <div class="details-panel" id="detailsPanel"></div>
+</div>
+
+<script src="js/core/constants.js"></script>
+<script src="js/core/dom.js"></script>
+<script src="js/core/icons.js"></script>
+<script src="js/state/catalog-data.js"></script>
+<script src="js/state/demo-users.js"></script>
+<script src="js/state/store.js"></script>
+<script src="js/api/client.js"></script>
+<script src="js/api/auth.js"></script>
+<script src="js/api/books.js"></script>
+<script src="js/api/announcements.js"></script>
+<script src="js/api/conversations.js"></script>
+<script src="js/api/chat.js"></script>
+<script src="js/api/feedback.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/modal.js"></script>
+<script src="js/ui/theme.js"></script>
+<script src="js/ui/auth-guard.js"></script>
+<script src="js/components/book-card.js"></script>
+<script src="js/components/message.js"></script>
+<script src="js/components/sidebar.js"></script>
+<script src="js/components/composer.js"></script>
+<script>
+(function () {
+  var icons = ASKMQL.core.icons;
+  icons.injectIconSprite();
+  document.querySelectorAll("[data-icon]").forEach(function (el) {
+    el.innerHTML = icons.icon(el.getAttribute("data-icon"));
+  });
+
+  if (!ASKMQL.core.constants.USE_API) {
+    document.getElementById("modeHint").textContent =
+      "Running fully offline on sample catalog data — no server needed.";
+  }
+
+  var messagesInner = document.getElementById("messagesInner");
+  var emptyState = document.getElementById("emptyState");
+  var historyList = document.getElementById("historyList");
+  var sidebar = document.getElementById("sidebar");
+  var backdrop = document.getElementById("backdrop");
+
+  function renderIdentity(user) {
+    document.getElementById("sidebarAvatar").textContent = user ? user.avatar_initials : "?";
+    document.getElementById("sidebarName").textContent = user ? user.name : "Guest";
+    document.getElementById("sidebarRole").textContent = user ? (user.department || user.role) : "Not signed in";
+  }
+  renderIdentity(ASKMQL.state.store.getSession());
+  ASKMQL.ui.authGuard.requireSession().then(renderIdentity);
+
+  document.getElementById("signOutBtn").addEventListener("click", function () {
+    ASKMQL.api.auth.logout().then(function () {
+      window.location.href = "login.html";
+    });
+  });
+
+  function toggleSidebar(open) {
+    sidebar.classList.toggle("open", open);
+    backdrop.classList.toggle("open", open);
+  }
+  backdrop.addEventListener("click", function () { toggleSidebar(false); });
+  document.getElementById("menuToggle").addEventListener("click", function () { toggleSidebar(true); });
+
+  function refreshHistory() {
+    ASKMQL.api.conversations.list().then(function (conversations) {
+      ASKMQL.components.sidebar.renderHistory(historyList, conversations, ASKMQL.state.store.getActiveId(), {
+        onSelect: function (id) { loadConversation(id); toggleSidebar(false); },
+        onRename: function (id, currentTitle) {
+          var name = prompt("Rename conversation", currentTitle);
+          if (name) ASKMQL.api.conversations.rename(id, name).then(refreshHistory);
+        },
+        onDelete: function (id) {
+          ASKMQL.api.conversations.remove(id).then(function () {
+            if (ASKMQL.state.store.getActiveId() === id) startNewChat();
+            else refreshHistory();
+          });
+        }
+      });
+    });
+  }
+
+  function loadConversation(id) {
+    ASKMQL.state.store.setActiveId(id);
+    messagesInner.innerHTML = "";
+    ASKMQL.api.conversations.messages(id).then(function (messages) {
+      emptyState.style.display = messages.length ? "none" : "block";
+      messages.forEach(function (m) {
+        ASKMQL.components.message.render(messagesInner, m.role, m.html || m.content);
+      });
+    });
+    refreshHistory();
+  }
+
+  function startNewChat() {
+    ASKMQL.api.conversations.create("New conversation").then(function (conv) {
+      ASKMQL.state.store.setActiveId(conv.id);
+      messagesInner.innerHTML = "";
+      emptyState.style.display = "block";
+      refreshHistory();
+    });
+    toggleSidebar(false);
+  }
+
+  document.getElementById("newChatBtn").addEventListener("click", startNewChat);
+  document.getElementById("newChatIconBtn").addEventListener("click", startNewChat);
+  document.getElementById("clearBtn").addEventListener("click", function () {
+    messagesInner.innerHTML = "";
+    emptyState.style.display = "block";
+  });
+
+  document.getElementById("convSearch").addEventListener("input", function (e) {
+    var q = e.target.value.toLowerCase();
+    Array.from(historyList.children).forEach(function (el, i) {
+      var title = el.querySelector(".htitle").textContent.toLowerCase();
+      el.style.display = title.indexOf(q) !== -1 ? "flex" : "none";
+    });
+  });
+
+  function send(text) {
+    emptyState.style.display = "none";
+    ASKMQL.components.message.render(messagesInner, "user", ASKMQL.core.dom.escapeHtml(text));
+    var typingEl = ASKMQL.components.message.showTyping(messagesInner);
+    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+
+    ASKMQL.api.chat.sendMessage(text, ASKMQL.state.store.getActiveId()).then(function (result) {
+      ASKMQL.components.message.hideTyping(messagesInner);
+
+      var html = ASKMQL.core.dom.escapeHtml(result.reply);
+      if (result.announcements && result.announcements.length) {
+        html += "<ul style='margin:8px 0 0;padding-left:18px;'>" +
+          result.announcements.map(function (a) { return "<li>" + ASKMQL.core.dom.escapeHtml(a) + "</li>"; }).join("") +
+          "</ul>";
+      } else if (result.books && result.books.length) {
+        html += ASKMQL.components.bookCard.grid(result.books);
+      }
+
+      ASKMQL.components.message.render(messagesInner, "ai", html);
+      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+      refreshHistory();
+    });
+  }
+
+  ASKMQL.components.composer.wire(
+    document.getElementById("composerInput"),
+    document.getElementById("sendBtn"),
+    send
+  );
+
+  document.querySelectorAll(".prompt-card").forEach(function (btn) {
+    btn.addEventListener("click", function () { send(btn.getAttribute("data-prompt")); });
+  });
+
+  // Book details modal (opened from book cards rendered inline in chat)
+  ASKMQL.components.bookCard.openDetailsCallback = function (bookId) {
+    ASKMQL.api.books.getBook(bookId).then(function (book) {
+      var related = (book.related || []).map(function (rid) {
+        return ASKMQL.state.catalogData.getBook(rid);
+      }).filter(Boolean);
+
+      var icon = ASKMQL.core.icons.icon;
+      var esc = ASKMQL.core.dom.escapeHtml;
+
+      document.getElementById("detailsPanel").innerHTML = ''
+        + '<div class="details-top">'
+        + '  <button class="details-close" id="detailsCloseBtn">' + icon("xmark") + '</button>'
+        + '  <div class="details-cover" style="background:' + book.color + '">' + icon(book.icon, 'style="width:44px;height:44px;"') + '</div>'
+        + '  <div class="details-headings">'
+        + '    <h2>' + esc(book.title) + '</h2>'
+        + '    <p class="auth">' + esc(book.author) + '</p>'
+        + '    <span class="badge ' + (book.available ? "available" : "unavailable") + '">' + (book.available ? "Available" : "Checked out") + '</span>'
+        + '  </div>'
+        + '</div>'
+        + '<div class="details-body">'
+        + '  <div class="detail-grid">'
+        + '    <div class="detail-field"><div class="label">Genre</div><div class="val">' + esc(book.category) + '</div></div>'
+        + '    <div class="detail-field"><div class="label">Publication Year</div><div class="val">' + esc(book.year) + '</div></div>'
+        + '    <div class="detail-field"><div class="label">ISBN</div><div class="val">' + esc(book.isbn) + '</div></div>'
+        + '    <div class="detail-field"><div class="label">Shelf Location</div><div class="val">' + esc(book.location) + '</div></div>'
+        + '  </div>'
+        + '  <div><div class="detail-field"><div class="label">Description</div></div><p class="detail-desc">' + esc(book.desc || book.description) + '</p></div>'
+        + '  <div><div class="detail-field"><div class="label">Related Books</div></div><div class="related-row">' + related.map(ASKMQL.components.bookCard.relatedChip).join("") + '</div></div>'
+        + '</div>'
+        + '<div class="details-actions">'
+        + '  <button class="btn-outline" id="detailsBackBtn">' + icon("arrow-left") + ' Back to Chat</button>'
+        + '  <button class="btn-outline solid" id="detailsAskBtn">' + icon("comments") + ' Ask AI About This Book</button>'
+        + '</div>';
+
+      var overlay = document.getElementById("detailsOverlay");
+      ASKMQL.ui.modal.open(overlay);
+      document.getElementById("detailsCloseBtn").addEventListener("click", function () { ASKMQL.ui.modal.close(overlay); });
+      document.getElementById("detailsBackBtn").addEventListener("click", function () { ASKMQL.ui.modal.close(overlay); });
+      document.getElementById("detailsAskBtn").addEventListener("click", function () {
+        ASKMQL.ui.modal.close(overlay);
+        send('Tell me more about "' + book.title + '"');
+      });
+    });
+  };
+
+  refreshHistory();
+  loadConversation(ASKMQL.state.store.getActiveId());
+
+  var askParam = new URLSearchParams(window.location.search).get("ask");
+  if (askParam) {
+    send('Tell me more about "' + askParam + '"');
+    window.history.replaceState({}, "", "chat.html");
+  }
+})();
+</script>
+</body>
+</html>

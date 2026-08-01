@@ -1,0 +1,4 @@
+/* Default theme -- the values in css/tokens/colors.css already are
+   the light theme, so this file exists mainly to document the split
+   and give dark.css something explicit to override against. */
+html{ color-scheme: light; }

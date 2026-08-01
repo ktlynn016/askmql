@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASKMQL — Conversation History</title>
+<link rel="stylesheet" href="css/tokens/colors.css">
+<link rel="stylesheet" href="css/tokens/typography.css">
+<link rel="stylesheet" href="css/tokens/spacing.css">
+<link rel="stylesheet" href="css/base/reset.css">
+<link rel="stylesheet" href="css/base/base.css">
+<link rel="stylesheet" href="css/layouts/page.css">
+<link rel="stylesheet" href="css/components/buttons.css">
+<link rel="stylesheet" href="css/components/sidebar.css">
+<link rel="stylesheet" href="css/themes/light.css">
+<link rel="stylesheet" href="css/themes/dark.css">
+<style>
+  /* history.html reuses .history-item styling but as a full-width list
+     rather than a narrow sidebar. */
+  #historyList{ background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:6px; }
+  #historyList .history-item{ padding:12px 10px; }
+  .history-search{ position:relative; margin-bottom:16px; }
+  .history-search .icon{ position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--muted); }
+  .history-search input{
+    width:100%; padding:11px 14px 11px 36px; border-radius:12px; border:1px solid var(--line);
+    background:var(--surface); font-size:14px; color:var(--ink);
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="page-header">
+    <a class="page-back" href="chat.html"><span data-icon="arrow-left"></span></a>
+    <h1>Conversation History</h1>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <span id="whoami" style="font-size:12px; color:var(--muted);"></span>
+      <button class="icon-btn" id="signOutBtn" title="Sign out"><span data-icon="logout"></span></button>
+    </div>
+  </header>
+  <main class="page-body">
+    <div class="history-search">
+      <span data-icon="search"></span>
+      <input type="text" placeholder="Search conversations" id="convSearch">
+    </div>
+    <div id="historyList"></div>
+  </main>
+</div>
+
+<script src="js/core/constants.js"></script>
+<script src="js/core/dom.js"></script>
+<script src="js/core/icons.js"></script>
+<script src="js/state/catalog-data.js"></script>
+<script src="js/state/demo-users.js"></script>
+<script src="js/state/store.js"></script>
+<script src="js/api/client.js"></script>
+<script src="js/api/auth.js"></script>
+<script src="js/api/conversations.js"></script>
+<script src="js/components/sidebar.js"></script>
+<script src="js/ui/auth-guard.js"></script>
+<script>
+(function () {
+  var icons = ASKMQL.core.icons;
+  icons.injectIconSprite();
+  document.querySelectorAll("[data-icon]").forEach(function (el) {
+    el.innerHTML = icons.icon(el.getAttribute("data-icon"));
+  });
+
+  var list = document.getElementById("historyList");
+
+  function renderIdentity(user) {
+    document.getElementById("whoami").textContent = user ? ("Signed in as " + user.name) : "Not signed in";
+  }
+  renderIdentity(ASKMQL.state.store.getSession());
+  ASKMQL.ui.authGuard.requireSession().then(renderIdentity);
+
+  document.getElementById("signOutBtn").addEventListener("click", function () {
+    ASKMQL.api.auth.logout().then(function () { window.location.href = "login.html"; });
+  });
+
+  function refresh() {
+    ASKMQL.api.conversations.list().then(function (conversations) {
+      if (!conversations.length) {
+        list.innerHTML = "<p style='color:var(--muted);padding:16px;'>No conversations yet — start one from the chat screen.</p>";
+        return;
+      }
+      ASKMQL.components.sidebar.renderHistory(list, conversations, ASKMQL.state.store.getActiveId(), {
+        onSelect: function (id) {
+          ASKMQL.state.store.setActiveId(id);
+          window.location.href = "chat.html";
+        },
+        onRename: function (id, currentTitle) {
+          var name = prompt("Rename conversation", currentTitle);
+          if (name) ASKMQL.api.conversations.rename(id, name).then(refresh);
+        },
+        onDelete: function (id) {
+          ASKMQL.api.conversations.remove(id).then(refresh);
+        }
+      });
+    });
+  }
+
+  document.getElementById("convSearch").addEventListener("input", function (e) {
+    var q = e.target.value.toLowerCase();
+    Array.from(list.children).forEach(function (el) {
+      var titleEl = el.querySelector(".htitle");
+      if (!titleEl) return;
+      el.style.display = titleEl.textContent.toLowerCase().indexOf(q) !== -1 ? "flex" : "none";
+    });
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

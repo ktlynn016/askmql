@@ -1,0 +1,15 @@
+.settings-section{margin-bottom:18px;}
+.settings-label{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin-bottom:8px;}
+.settings-row{
+  display:flex; align-items:center; justify-content:space-between; padding:11px 4px; font-size:13.5px;
+  border-bottom:1px solid var(--line);
+}
+.settings-row .icon{color:var(--muted); width:18px; height:18px; margin-right:10px;}
+.settings-row .left{display:flex; align-items:center;}
+.settings-row.link{cursor:pointer;}
+.settings-row.link:hover{color:var(--primary);}
+
+.toggle{width:38px; height:22px; border-radius:999px; background:var(--line); position:relative; cursor:pointer; transition:background .15s ease; flex-shrink:0;}
+.toggle.on{background:var(--primary);}
+.toggle .knob{width:18px; height:18px; border-radius:50%; background:#fff; position:absolute; top:2px; left:2px; transition:left .15s ease;}
+.toggle.on .knob{left:18px;}

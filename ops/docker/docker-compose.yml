@@ -1,0 +1,50 @@
+# Local dev stack: backend + MySQL. Frontend is static files, served
+# separately (any static host, or "python -m http.server" from
+# frontend/ for a quick local check) -- not containerized here since
+# it needs zero build step.
+#
+# Usage:
+#   docker compose -f ops/docker/docker-compose.yml up --build
+#
+# First run only: import migrations + seeds into the mysql container
+#   docker exec -i askmql-mysql mysql -uroot -prootpass < backend/migrations/0001_initial_schema.sql
+#   docker exec -i askmql-mysql mysql -uroot -prootpass < backend/migrations/0002_add_feedback_and_query_log.sql
+#   docker exec -i askmql-mysql mysql -uroot -prootpass < backend/migrations/0003_add_auth.sql
+#   docker exec -i askmql-mysql mysql -uroot -prootpass askmql < backend/seeds/sample_catalog.sql
+#   docker exec -i askmql-mysql mysql -uroot -prootpass askmql < backend/seeds/announcements.sql
+#   docker exec -i askmql-mysql mysql -uroot -prootpass askmql < backend/seeds/users.sql
+
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: askmql-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: askmql
+    ports:
+      - "3306:3306"
+    volumes:
+      - askmql-mysql-data:/var/lib/mysql
+
+  backend:
+    build:
+      context: ../../
+      dockerfile: ops/docker/Dockerfile.backend
+    container_name: askmql-backend
+    depends_on:
+      - mysql
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rootpass
+      DB_NAME: askmql
+      CORS_ORIGINS: "*"
+      FLASK_DEBUG: "0"
+    ports:
+      - "5000:5000"
+
+volumes:
+  askmql-mysql-data:

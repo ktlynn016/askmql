@@ -1,0 +1,444 @@
+openapi: 3.0.3
+info:
+  title: ASKMQL API
+  description: >
+    AI library chatbot API for the GSU Mosqueda Campus Library.
+    All endpoints are prefixed with /api/v1.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local development
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  service: { type: string }
+                  version: { type: string }
+
+  /chat:
+    post:
+      summary: Send a chat message and get the assistant's reply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string }
+                conversation_id: { type: integer, nullable: true }
+      responses:
+        "200":
+          description: Assistant reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /auth/signup:
+    post:
+      summary: Register a new student account (auto-logs-in on success)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, student_id, password]
+              properties:
+                name: { type: string }
+                student_id: { type: string }
+                department: { type: string }
+                password: { type: string, format: password }
+      responses:
+        "201":
+          description: Created and logged in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /auth/login:
+    post:
+      summary: Log in as a student (student_id) or librarian (email)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, password]
+              properties:
+                identifier: { type: string, description: "student_id for students, email for librarians" }
+                password: { type: string, format: password }
+                role: { type: string, enum: [student, librarian], description: "optional; rejects a correct password on the wrong account type" }
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      summary: Clear the current session
+      responses:
+        "204":
+          description: Logged out
+
+  /auth/me:
+    get:
+      summary: Get the currently logged-in user, if any
+      responses:
+        "200":
+          description: Current session (user is null if not logged in)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    oneOf:
+                      - { $ref: "#/components/schemas/User" }
+                      - { type: "null" }
+
+  /books:
+    get:
+      summary: List or search books
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+      responses:
+        "200":
+          description: Array of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Book" }
+
+  /books/{bookId}:
+    get:
+      summary: Get a single book with related books
+      parameters:
+        - $ref: "#/components/parameters/BookId"
+      responses:
+        "200":
+          description: Book detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BookDetail" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /books/{bookId}/availability:
+    get:
+      summary: Get availability for a book
+      parameters:
+        - $ref: "#/components/parameters/BookId"
+      responses:
+        "200":
+          description: Availability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Availability" }
+    put:
+      summary: Update availability for a book
+      parameters:
+        - $ref: "#/components/parameters/BookId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                available: { type: boolean }
+      responses:
+        "200":
+          description: Updated availability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Availability" }
+
+  /recommendations:
+    get:
+      summary: Get a few available book recommendations
+      parameters:
+        - in: query
+          name: category
+          schema: { type: string }
+      responses:
+        "200":
+          description: Array of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Book" }
+
+  /announcements:
+    get:
+      summary: List current announcements
+      responses:
+        "200":
+          description: Array of announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Announcement" }
+
+  /conversations:
+    get:
+      summary: List conversation history
+      responses:
+        "200":
+          description: Array of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Conversation" }
+    post:
+      summary: Create a new conversation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+
+  /conversations/{conversationId}:
+    patch:
+      summary: Rename a conversation
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+    delete:
+      summary: Delete a conversation
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+      responses:
+        "204":
+          description: Deleted
+
+  /conversations/{conversationId}/messages:
+    get:
+      summary: List messages in a conversation
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+      responses:
+        "200":
+          description: Array of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Message" }
+
+  /feedback:
+    post:
+      summary: Submit feedback on a message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message_id, rating]
+              properties:
+                message_id: { type: integer }
+                rating: { type: string, enum: [up, down] }
+                note: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Feedback" }
+
+  /admin/metrics:
+    get:
+      summary: Aggregate query metrics (requires a logged-in librarian session)
+      security: [{ SessionCookie: [] }]
+      responses:
+        "200":
+          description: Metrics summary
+        "401":
+          description: Not logged in, or not a librarian
+
+  /admin/sync-catalog:
+    post:
+      summary: Trigger a catalog sync job (requires a logged-in librarian session)
+      security: [{ SessionCookie: [] }]
+      responses:
+        "200":
+          description: Sync result
+        "401":
+          description: Not logged in, or not a librarian
+
+components:
+  parameters:
+    BookId:
+      name: bookId
+      in: path
+      required: true
+      schema: { type: integer }
+    ConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema: { type: integer }
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationError:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        role: { type: string, enum: [student, librarian] }
+        email: { type: string, nullable: true }
+        student_id: { type: string, nullable: true }
+        department: { type: string }
+        avatar_initials: { type: string }
+
+
+    Book:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        author: { type: string }
+        category: { type: string }
+        year: { type: integer }
+        isbn: { type: string }
+        description: { type: string }
+        shelf: { type: string }
+        location: { type: string }
+        available: { type: boolean }
+        color: { type: string }
+        icon: { type: string }
+
+    BookDetail:
+      allOf:
+        - $ref: "#/components/schemas/Book"
+        - type: object
+          properties:
+            related:
+              type: array
+              items: { type: integer }
+
+    Availability:
+      type: object
+      properties:
+        book_id: { type: integer }
+        available: { type: boolean }
+
+    Announcement:
+      type: object
+      properties:
+        id: { type: integer }
+        message: { type: string }
+        posted_at: { type: string, format: date-time }
+
+    Conversation:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Message:
+      type: object
+      properties:
+        id: { type: integer }
+        conversation_id: { type: integer }
+        role: { type: string, enum: [user, ai] }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Feedback:
+      type: object
+      properties:
+        id: { type: integer }
+        message_id: { type: integer }
+        rating: { type: string, enum: [up, down] }
+        note: { type: string }
+        created_at: { type: string, format: date-time }
+
+    ChatResponse:
+      type: object
+      properties:
+        conversation_id: { type: integer }
+        reply: { type: string }
+        books:
+          type: array
+          items: { $ref: "#/components/schemas/Book" }
+        announcements:
+          type: array
+          items: { type: string }
+        intent: { type: string }

@@ -28,6 +28,6 @@ ASKMQL.core.constants = {
   // Until you've done this, leave USE_API false -- the app runs
   // fully offline on built-in sample data either way, so nothing
   // breaks by deploying early.
-  USE_API: false,
-  API_BASE_URL: "https://REPLACE-WITH-YOUR-BACKEND-URL.onrender.com/api/v1",
+   USE_API: true,
+   API_BASE_URL: "https://askmql-backend.onrender.com/api/v1",
 };

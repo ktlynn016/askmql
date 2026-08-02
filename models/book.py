@@ -1,4 +1,5 @@
 from database.db import db
+from models.author import Author  # noqa: F401 -- must be imported so SQLAlchemy can resolve the "Author" relationship below
 
 book_authors = db.Table(
     "book_authors",
